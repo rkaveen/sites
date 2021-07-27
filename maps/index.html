@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <link rel='icon' href='img/favicon.ico' type='image/x-icon'/>
+
+
+    <title></title>
+    <meta name="description" content="" />
+    <meta name="author" content="Kasatria" />
+
+    <script
+      src="https://code.jquery.com/jquery-3.6.0.js"
+      integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
+      crossorigin="anonymous"
+    ></script>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+      integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+      crossorigin="anonymous"
+    ></script>
+  
+
+    <style>
+      body {
+        width: 1120px;
+        margin: auto;
+        background: #f6f8fa;
+      }
+      .form-one{
+          width: 500px;
+          margin: auto;
+          margin-top: 100px;
+      }
+      #purpose{
+        width: 176px;
+        height: 25px;
+      }
+      select{
+        width: 176px;
+        height: 25px;
+      }
+      #map {
+  height: 500px;
+}
+
+    </style>
+  </head>
+
+  <body>
+    <div class="form-one">
+        <form id="f1"> 
+          <h3></h3>
+
+          <label for="origin_type">Input Type:</label><br>
+          <select id="origin_type" name="origin_type">
+            <option value="latlng">Coordinates</option>
+            <option value="address">Text Address</option>
+          </select><br><br>
+
+          <label for="address">Location:</label><br>
+        <input type="text" id="address" name="address" placeholder="Enter value here" value=""><br><br>
+
+        <input type="submit" value="Submit">
+      </form>
+      <br><br>
+      <p id="address_desc"></p>
+      <br>
+      <div id="map"></div>
+      <br>
+      <p id="fastest_desc"></p>
+      <ul id="fastest_list"></ul>
+
+      <br>
+      <p id="nearest_desc"></p>
+      <ul id="nearest_list"></ul>
+    </div>
+
+
+
+    <script>
+            let map;
+    // initialize services
+    function initialize(){
+      const service = new google.maps.DistanceMatrixService();
+      const geocoder = new google.maps.Geocoder();
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 3.110, lng: 101.665 },
+          zoom: 8,
+        });
+
+    }
+
+       var destinations = ["place_id:ChIJndIRtT1IzDERJ6Rvj4Bf_70","place_id:ChIJ3_LubsBJzDERtkXeAHLei00","place_id:ChIJpSG_6ng1zDERGAvLd108kTo","place_id:ChIJb_EntD_ASjARBiXGrY5UjDE","place_id:ChIJJWSPYcYS2jERkzuG4KzBK0U","place_id:ChIJmYW7yxmm-zERBZD-KxPO4TI","place_id:ChIJq6qqqibJzTERYyX0C9TJSe0","place_id:ChIJj8-p5nxNzDER5w8x7f9TSKg","place_id:ChIJ8dKkmAxOHzIRbe-lkf87gGo","place_id:ChIJh3EhJHC0zTERQdZHXcbrhR4"];
+       var destinations1 = ["World Trade Centre Kuala Lumpur", "Cardiac Vascular Sentral Kuala Lumpur", "Desa Tasik Sports Complex", "Setia SPICE Convention Centre", "Persada Johor International Convention Centre", "Borneo Convention Centre Kuching", "Universiti Kebangsaan Malaysia", "Ideal Convention Centre, Shah Alam", "Institut Kemahiran Belia Negara Miri", "Universiti Malaya"];
+       
+       var originId;
+
+       function deleteMarkers(markersArray) {
+          for (let i = 0; i < markersArray.length; i++) {
+            markersArray[i].setMap(null);
+          }
+          markersArray = [];
+        }
+
+      function compareDistance(inp){
+        var index = 0;
+        winningIndex = 99;
+        var val = 1000000000000;
+        inp.elements.forEach(function cb(element){
+            if(element.distance.value < val){
+                winningIndex = index;
+                val = element.distance.value;
+            }
+            index++;
+        });
+
+        return winningIndex;
+      }  
+
+      function compareTime(inp){
+        var index = 0;
+        winningIndex = 99;
+        var val = 1000000000000;
+        inp.elements.forEach(function cb(element){
+            if(element.duration.value < val){
+                winningIndex = index;
+                val = element.duration.value;
+            }
+            index++;
+        });
+
+        return winningIndex;
+      } 
+
+      var apiKey = 'AIzaSyAugYgNirsYSBdyUPpjt0_cpPB76H0Ju3g';
+
+        $( "#f1" ).submit(function( event ) {
+
+          event.preventDefault(); 
+          const service = new google.maps.DistanceMatrixService();
+          const geocoder = new google.maps.Geocoder();
+          var markersArray = [];
+          const bounds = new google.maps.LatLngBounds();
+
+          var option = document.getElementById("origin_type").value;
+          var address = document.getElementById('address').value;
+
+          if (option == 'latlng'){
+
+            var latlng = address.split(',');
+            var lat1 = parseFloat(latlng[0]);
+            var lng1 = parseFloat(latlng[1]);
+            const origin1 = [{ lat: lat1, lng: lng1}];
+
+            const request = {
+              origins: origin1,
+              destinations: destinations1,
+              travelMode: google.maps.TravelMode.DRIVING,
+              unitSystem: google.maps.UnitSystem.METRIC
+            };
+
+            var endpoint = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + address + '&key=' + apiKey;
+
+            $.get(endpoint, function( data ) {
+              console.log(data);
+              var postalcode;
+              var state;
+              var city;
+              data.results[0].address_components.forEach(function (element){
+
+                var types = element.types;
+
+                if (types.includes('postal_code')){
+                  postalcode = element.long_name;
+                }else if (types.includes('administrative_area_level_1')){
+                  state = element.long_name;
+                }else if (types.includes('locality')){
+                  city = element.long_name;
+                }
+
+              });
+              //postal code, state, city, 
+              $('#address_desc').html('Your address is: ' + data.results[0].formatted_address + '<br>Your place ID is: ' + data.results[0].place_id + '<br><br>Postal Code: ' + postalcode + '<br>State: ' + state + '<br>City: ' + city);
+              originId = data.results[0].place_id;
+
+             }).then(function(){ 
+                    
+                service.getDistanceMatrix(request).then((response) => {
+                    console.log(response);
+                    var inp = response.rows[0];
+                    var fastArr = [];
+                    var nearArr = [];
+                    response.rows[0].elements.forEach(function(element, index){
+                      var obj = {
+                        address: destinations1[index],
+                        distance: element.distance,
+                        duration: element.duration
+                      }
+                      fastArr.push(obj);
+                      nearArr.push(obj);
+                    });
+
+                    
+                    fastArr.sort(function(a, b) {
+                        return parseFloat(a.duration.value) - parseFloat(b.duration.value);
+                    });
+
+                    nearArr.sort(function(a, b) {
+                        return parseFloat(a.distance.value) - parseFloat(b.distance.value);
+                    });
+
+                    $("#fastest_list").append('<h2>Fastest PPVs</h2><br>');
+                    fastArr.forEach(function(element){
+                      $("#fastest_list").append('<li><a  target=\"_blank\" href="https://www.google.com/maps/dir/?api=1&origin='+ address + '&origin_place_id=' + originId + '&destination=' + encodeURI(element.address) + '">' + element.address + " - " + element.duration.text + '</a></li>');
+                    });
+
+                    $("#nearest_list").append('<h2>Nearest PPVs</h2><br>');
+
+                    nearArr.forEach(function(element){
+                      $("#nearest_list").append('<li><a  target=\"_blank\" href="https://www.google.com/maps/dir/?api=1&origin='+ address + '&origin_place_id=' + originId + '&destination=' + encodeURI(element.address) + '">' + element.address + " - " + element.distance.text + '</a></li>');
+                    });
+
+
+
+                    var fastest = compareTime(inp);
+                    var nearest = compareDistance(inp);
+                    const destinationList = response.destinationAddresses;
+                    const originList = response.originAddresses;
+
+                    if (fastest == nearest){
+                      var urldest = encodeURI(destinations1[fastest]);
+                      var mapurl = "https://www.google.com/maps/dir/?api=1&origin=" + address + "&origin_place_id=" + originId + "&destination=" + urldest;
+
+                      
+                      $("#fastest_desc").html("The nearest AND the fastest vaccination center to you is at " + destinations1[fastest] + ", which is " + inp.elements[fastest].distance.text + " and " + inp.elements[fastest].duration.text + " away.<br><a target=\"_blank\" href=" +mapurl+ ">Get Directions</a>");
+
+
+                      deleteMarkers(markersArray);
+
+                            const showGeocodedAddressOnMap = (asDestination) => {
+                              const handler = ({ results }) => {
+                                map.fitBounds(bounds.extend(results[0].geometry.location));
+                                markersArray.push(
+                                  new google.maps.Marker({
+                                    map,
+                                    position: results[0].geometry.location,
+                                    label: asDestination ? "D" : "O",
+                                  })
+                                );
+                              };
+
+                              return handler;
+
+                            };
+
+                        geocoder
+                        .geocode({ address: originList[0] })
+                        .then(showGeocodedAddressOnMap(false));
+
+                        geocoder
+                        .geocode({ address: destinationList[fastest] })
+                        .then(showGeocodedAddressOnMap(true));
+
+                    }else{
+                      var urldest = encodeURI(destinations1[fastest]);
+                      var urldest2 = encodeURI(destinations1[fastest]);
+                      var mapurl = "https://www.google.com/maps/dir/?api=1&origin=" + address + "&origin_place_id=" + originId + "&destination=" + urldest;
+                      var mapurl2 = "https://www.google.com/maps/dir/?api=1&origin=" + address + "&origin_place_id=" + originId + "&destination=" + urldest;
+                      
+                      $("#fastest_desc").html("The fastest vaccination center to you is at " + destinations1[fastest] + ", which is " + inp.elements[fastest].distance.text + " and " + inp.elements[fastest].duration.text + " away.<br><a target=\"_blank\" href=" +mapurl+ ">Get Directions</a>");
+                    $("#nearest_desc").html("The nearest vaccination center to you is at " + destinations1[nearest] + ", which is " + inp.elements[nearest].distance.text + " and " + inp.elements[nearest].duration.text + " away.<br><a target=\"_blank\" href=" +mapurl2+ ">Get Directions</a>");
+                      
+                      deleteMarkers(markersArray);
+
+                            const showGeocodedAddressOnMap = (asDestination) => {
+                              const handler = ({ results }) => {
+                                map.fitBounds(bounds.extend(results[0].geometry.location));
+                                markersArray.push(
+                                  new google.maps.Marker({
+                                    map,
+                                    position: results[0].geometry.location,
+                                    label: asDestination ? "D" : "O",
+                                  })
+                                );
+                              };
+
+                              return handler;
+
+                            };
+
+                        geocoder
+                        .geocode({ address: originList[0] })
+                        .then(showGeocodedAddressOnMap(false));
+
+                        geocoder
+                        .geocode({ address: destinationList[fastest] })
+                        .then(showGeocodedAddressOnMap(true));
+
+                        geocoder
+                        .geocode({ address: destinationList[nearest] })
+                        .then(showGeocodedAddressOnMap(true));
+
+                    }
+
+                  });
+            });
+
+          }else if(option == 'address'){
+
+            const origin1 = [address];
+
+            const request = {
+              origins: origin1,
+              destinations: destinations1,
+              travelMode: google.maps.TravelMode.DRIVING,
+              unitSystem: google.maps.UnitSystem.METRIC
+            };
+
+            var endpoint = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + address + '&key=' + apiKey;
+
+            $.get(endpoint, function( data ) {
+              console.log(data);
+              var postalcode;
+              var state;
+              var city;
+              data.results[0].address_components.forEach(function (element){
+
+                var types = element.types;
+
+                if (types.includes('postal_code')){
+                  postalcode = element.long_name;
+                }else if (types.includes('administrative_area_level_1')){
+                  state = element.long_name;
+                }else if (types.includes('locality')){
+                  city = element.long_name;
+                }
+
+              });
+              //postal code, state, city, 
+              $('#address_desc').html('Your address is: ' + data.results[0].formatted_address + '<br>Your place ID is: ' + data.results[0].place_id + '<br><br>Postal Code: ' + postalcode + '<br>State: ' + state + '<br>City: ' + city);
+              originId = data.results[0].place_id;
+
+            }).then(function(){
+
+              service.getDistanceMatrix(request).then((response) => {
+                    // show on map
+                    console.log(response);
+                    var inp = response.rows[0];
+                    var fastArr = [];
+                    var nearArr = [];
+                    response.rows[0].elements.forEach(function(element, index){
+                      var obj = {
+                        address: destinations1[index],
+                        distance: element.distance,
+                        duration: element.duration
+                      }
+                      fastArr.push(obj);
+                      nearArr.push(obj);
+                    });
+
+                    
+                    fastArr.sort(function(a, b) {
+                        return parseFloat(a.duration.value) - parseFloat(b.duration.value);
+                    });
+
+                    nearArr.sort(function(a, b) {
+                        return parseFloat(a.distance.value) - parseFloat(b.distance.value);
+                    });
+
+                    $("#fastest_list").append('<h2>Fastest PPVs</h2><br>');
+                    fastArr.forEach(function(element){
+                      $("#fastest_list").append('<li><a  target=\"_blank\" href="https://www.google.com/maps/dir/?api=1&origin='+ address + '&origin_place_id=' + originId + '&destination=' + encodeURI(element.address) + '">' + element.address + " - " + element.duration.text + '</a></li>');
+                    });
+
+                    $("#nearest_list").append('<h2>Nearest PPVs</h2><br>');
+                    nearArr.forEach(function(element){
+                      $("#nearest_list").append('<li><a  target=\"_blank\" href="https://www.google.com/maps/dir/?api=1&origin='+ address + '&origin_place_id=' + originId + '&destination=' + encodeURI(element.address) + '">' + element.address + " - " + element.distance.text + '</a></li>');
+                    });
+                    
+                    var fastest = compareTime(inp);
+                    var nearest = compareDistance(inp);
+                    const destinationList = response.destinationAddresses;
+                    const originList = response.originAddresses;
+                    if (fastest == nearest){
+                      address = encodeURI(address);
+                      var urldest = encodeURI(destinations1[fastest]);
+                      var mapurl = "https://www.google.com/maps/dir/?api=1&origin=" + address + "&origin_place_id=" + originId + "&destination=" + urldest;
+
+                      
+                      $("#fastest_desc").html("The nearest AND the fastest vaccination center to you is at " + destinations1[fastest] + ", which is " + inp.elements[fastest].distance.text + " and " + inp.elements[fastest].duration.text + " away.<br><a target=\"_blank\" href=" +mapurl+ ">Get Directions</a>");
+
+                      
+                      deleteMarkers(markersArray);
+
+                            const showGeocodedAddressOnMap = (asDestination) => {
+                              const handler = ({ results }) => {
+                                map.fitBounds(bounds.extend(results[0].geometry.location));
+                                markersArray.push(
+                                  new google.maps.Marker({
+                                    map,
+                                    position: results[0].geometry.location,
+                                    label: asDestination ? "D" : "O",
+                                  })
+                                );
+                              };
+
+                              return handler;
+
+                            };
+
+                        geocoder
+                        .geocode({ address: originList[0] })
+                        .then(showGeocodedAddressOnMap(false));
+
+                        geocoder
+                        .geocode({ address: destinationList[fastest] })
+                        .then(showGeocodedAddressOnMap(true));
+
+                    }else{
+                      address = encodeURI(address);
+                      var urldest = encodeURI(destinations1[fastest]);
+                      var urldest2 = encodeURI(destinations1[fastest]);
+                      var mapurl = "https://www.google.com/maps/dir/?api=1&origin=" + address + "&origin_place_id=" + originId + "&destination=" + urldest
+                      var mapurl2 = "https://www.google.com/maps/dir/?api=1&origin=" + address + "&origin_place_id=" + originId + "&destination=" + urldest
+                      
+                      $("#fastest_desc").html("The fastest vaccination center to you is at " + destinations1[fastest] + ", which is " + inp.elements[fastest].distance.text + " and " + inp.elements[fastest].duration.text + " away.<br><a target=\"_blank\" href=" +mapurl+ ">Get Directions</a>");
+                    $("#nearest_desc").html("The nearest vaccination center to you is at " + destinations1[nearest] + ", which is " + inp.elements[nearest].distance.text + " and " + inp.elements[nearest].duration.text + " away.<br><a target=\"_blank\" href=" +mapurl2+ ">Get Directions</a>");
+                      
+                      deleteMarkers(markersArray);
+
+                            const showGeocodedAddressOnMap = (asDestination) => {
+                              const handler = ({ results }) => {
+                                map.fitBounds(bounds.extend(results[0].geometry.location));
+                                markersArray.push(
+                                  new google.maps.Marker({
+                                    map,
+                                    position: results[0].geometry.location,
+                                    label: asDestination ? "D" : "O",
+                                  })
+                                );
+                              };
+
+                              return handler;
+
+                            };
+
+                        geocoder
+                        .geocode({ address: originList[0] })
+                        .then(showGeocodedAddressOnMap(false));
+
+                        geocoder
+                        .geocode({ address: destinationList[fastest] })
+                        .then(showGeocodedAddressOnMap(true));
+
+                        geocoder
+                        .geocode({ address: destinationList[nearest] })
+                        .then(showGeocodedAddressOnMap(true));
+
+                    }
+
+
+
+                  });
+            });
+          }
+ 
+        });
+    </script>
+    
+       <script
+       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAugYgNirsYSBdyUPpjt0_cpPB76H0Ju3g&callback=initialize&libraries=&v=weekly&channel=2"
+       async
+     ></script>
+  </body>
+</html>
